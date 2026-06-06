@@ -1,28 +1,37 @@
-import type { AyahData, SurahMeta } from "@/types/quran";
+import type { AyahData, JuzMeta, SurahMeta } from "@/types/quran";
 
 const arabicRaw = require("@/assets/data/arabic.json") as {
   quran: { chapter: number; verse: number; text: string }[];
 };
 
+interface RawAyah {
+  number: number;
+  text: string;
+  numberInSurah: number;
+  juz: number;
+  manzil: number;
+  page: number;
+  ruku: number;
+  hizbQuarter: number;
+  sajda: boolean;
+}
+
+interface RawSurah {
+  number: number;
+  name: string;
+  englishName: string;
+  englishNameTranslation: string;
+  revelationType: string;
+  ayahs: RawAyah[];
+}
+
 const englishRaw = require("@/assets/data/english.json") as {
-  data: {
-    surahs: {
-      number: number;
-      name: string;
-      englishName: string;
-      englishNameTranslation: string;
-      revelationType: string;
-      ayahs: { numberInSurah: number; text: string }[];
-    }[];
-  };
+  data: { surahs: RawSurah[] };
 };
 
 const urduRaw = require("@/assets/data/urdu.json") as {
   data: {
-    surahs: {
-      number: number;
-      ayahs: { numberInSurah: number; text: string }[];
-    }[];
+    surahs: { number: number; ayahs: { numberInSurah: number; text: string }[] }[];
   };
 };
 
@@ -30,6 +39,43 @@ let _arabicMap: Map<string, string> | null = null;
 let _surahs: SurahMeta[] | null = null;
 let _englishByKey: Map<string, string> | null = null;
 let _urduByKey: Map<string, string> | null = null;
+let _rukoByKey: Map<string, number> | null = null;
+let _juzByKey: Map<string, number> | null = null;
+let _pageByKey: Map<string, number> | null = null;
+let _juzList: JuzMeta[] | null = null;
+
+const JUZ_ARABIC_NAMES: Record<number, string> = {
+  1: "الم",
+  2: "سَيَقُولُ",
+  3: "تِلْكَ الرُّسُلُ",
+  4: "لَنْ تَنَالُوا",
+  5: "وَالْمُحْصَنَاتُ",
+  6: "لَا يُحِبُّ اللَّهُ",
+  7: "وَإِذَا سَمِعُوا",
+  8: "وَلَوْ أَنَّنَا",
+  9: "قَالَ الْمَلَأُ",
+  10: "وَاعْلَمُوا",
+  11: "يَعْتَذِرُونَ",
+  12: "وَمَا مِنْ دَابَّةٍ",
+  13: "وَمَا أُبَرِّئُ",
+  14: "رُبَمَا",
+  15: "سُبْحَانَ الَّذِي",
+  16: "قَالَ أَلَمْ أَقُلْ",
+  17: "اقْتَرَبَ",
+  18: "قَدْ أَفْلَحَ",
+  19: "وَقَالَ الَّذِينَ",
+  20: "أَمَّنْ خَلَقَ",
+  21: "اتْلُ مَا أُوحِيَ",
+  22: "وَمَنْ يَقْنُتْ",
+  23: "وَمَا لِيَ",
+  24: "فَمَنْ أَظْلَمُ",
+  25: "إِلَيْهِ يُرَدُّ",
+  26: "حم",
+  27: "قَالَ فَمَا خَطْبُكُمْ",
+  28: "قَدْ سَمِعَ اللَّهُ",
+  29: "تَبَارَكَ الَّذِي",
+  30: "عَمَّ يَتَسَاءَلُونَ",
+};
 
 function initMaps() {
   if (_arabicMap) return;
@@ -41,10 +87,22 @@ function initMaps() {
 
   _englishByKey = new Map();
   _urduByKey = new Map();
+  _rukoByKey = new Map();
+  _juzByKey = new Map();
+  _pageByKey = new Map();
+
+  const juzFirstSeen = new Map<number, { surahNumber: number; ayahNumber: number }>();
 
   for (const s of englishRaw.data.surahs) {
     for (const a of s.ayahs) {
-      _englishByKey.set(`${s.number}:${a.numberInSurah}`, a.text);
+      const key = `${s.number}:${a.numberInSurah}`;
+      _englishByKey.set(key, a.text);
+      _rukoByKey.set(key, a.ruku);
+      _juzByKey.set(key, a.juz);
+      _pageByKey.set(key, a.page);
+      if (!juzFirstSeen.has(a.juz)) {
+        juzFirstSeen.set(a.juz, { surahNumber: s.number, ayahNumber: a.numberInSurah });
+      }
     }
   }
 
@@ -62,6 +120,19 @@ function initMaps() {
     revelationType: s.revelationType as "Meccan" | "Medinan",
     ayahCount: s.ayahs.length,
   }));
+
+  _juzList = Array.from({ length: 30 }, (_, i) => {
+    const n = i + 1;
+    const start = juzFirstSeen.get(n) ?? { surahNumber: 1, ayahNumber: 1 };
+    const startSurah = _surahs!.find((s) => s.number === start.surahNumber);
+    return {
+      number: n,
+      arabicName: JUZ_ARABIC_NAMES[n] ?? `جزء ${n}`,
+      startSurahNumber: start.surahNumber,
+      startAyahNumber: start.ayahNumber,
+      startSurahName: startSurah?.nameEnglish ?? "",
+    };
+  });
 }
 
 export function getSurahs(): SurahMeta[] {
@@ -72,6 +143,11 @@ export function getSurahs(): SurahMeta[] {
 export function getSurah(surahNumber: number): SurahMeta | undefined {
   initMaps();
   return _surahs!.find((s) => s.number === surahNumber);
+}
+
+export function getJuzList(): JuzMeta[] {
+  initMaps();
+  return _juzList!;
 }
 
 export function getSurahAyahs(surahNumber: number): AyahData[] {
@@ -87,11 +163,17 @@ export function getSurahAyahs(surahNumber: number): AyahData[] {
       arabic: _arabicMap!.get(key) ?? "",
       english: _englishByKey!.get(key) ?? "",
       urdu: _urduByKey!.get(key) ?? "",
+      juz: _juzByKey!.get(key) ?? 1,
+      ruku: _rukoByKey!.get(key) ?? 1,
+      page: _pageByKey!.get(key) ?? 1,
     };
   });
 }
 
-export function searchAyahs(query: string): AyahData[] {
+export function searchAyahs(
+  query: string,
+  extraLangMap?: Map<string, string>
+): AyahData[] {
   if (!query.trim()) return [];
   initMaps();
 
@@ -104,11 +186,13 @@ export function searchAyahs(query: string): AyahData[] {
       const eng = _englishByKey!.get(key) ?? "";
       const urd = _urduByKey!.get(key) ?? "";
       const arb = _arabicMap!.get(key) ?? "";
+      const extra = extraLangMap?.get(key) ?? "";
 
       if (
         eng.toLowerCase().includes(q) ||
         urd.includes(q) ||
-        arb.includes(q)
+        arb.includes(q) ||
+        extra.toLowerCase().includes(q)
       ) {
         results.push({
           surahNumber: s.number,
@@ -116,6 +200,9 @@ export function searchAyahs(query: string): AyahData[] {
           arabic: arb,
           english: eng,
           urdu: urd,
+          juz: _juzByKey!.get(key) ?? 1,
+          ruku: _rukoByKey!.get(key) ?? 1,
+          page: _pageByKey!.get(key) ?? 1,
         });
         if (results.length >= 100) return results;
       }

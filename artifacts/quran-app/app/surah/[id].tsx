@@ -1,7 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useMemo } from "react";
+import React, { useCallback, useMemo, useRef } from "react";
 import {
   FlatList,
   Platform,
@@ -12,24 +12,63 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AyahCard } from "@/components/AyahCard";
+import { useQuranSettings } from "@/context/QuranContext";
 import { useColors } from "@/hooks/useColors";
+import { EXTRA_LANGUAGES } from "@/utils/languageManager";
 import { getSurah, getSurahAyahs } from "@/utils/quranData";
 import type { AyahData } from "@/types/quran";
 
 const BISMILLAH = "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ";
 
 export default function SurahReaderScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, startAyah } = useLocalSearchParams<{
+    id: string;
+    startAyah?: string;
+  }>();
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { settings, langMap } = useQuranSettings();
+  const listRef = useRef<FlatList<AyahData>>(null);
 
   const surahNumber = Number(id);
+  const startAyahNumber = startAyah ? Number(startAyah) : undefined;
   const surah = getSurah(surahNumber);
   const ayahs = useMemo(() => getSurahAyahs(surahNumber), [surahNumber]);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   const showBismillah = surahNumber !== 1 && surahNumber !== 9;
+
+  const activeLang = settings.activeExtraLang
+    ? EXTRA_LANGUAGES.find((l) => l.edition === settings.activeExtraLang)
+    : null;
+
+  const initialIndex = useMemo(() => {
+    if (!startAyahNumber || startAyahNumber <= 1) return undefined;
+    const idx = ayahs.findIndex((a) => a.ayahNumber >= startAyahNumber);
+    return idx >= 0 ? idx : undefined;
+  }, [ayahs, startAyahNumber]);
+
+  const getItemLayout = useCallback(
+    (_: ArrayLike<AyahData> | null | undefined, index: number) => ({
+      length: 200,
+      offset: 200 * index,
+      index,
+    }),
+    []
+  );
+
+  const onListReady = useCallback(() => {
+    if (initialIndex !== undefined && initialIndex > 0 && listRef.current) {
+      try {
+        listRef.current.scrollToIndex({
+          index: initialIndex,
+          animated: false,
+          viewPosition: 0,
+        });
+      } catch {}
+    }
+  }, [initialIndex]);
 
   if (!surah) {
     return (
@@ -66,8 +105,14 @@ export default function SurahReaderScreen() {
           <Text style={[styles.surahNameArabic, { color: colors.arabicText }]}>
             {surah.nameArabic.replace(/^سُورَةُ\s+/, "")}
           </Text>
-          <Text style={[styles.surahNameEnglish, { color: colors.mutedForeground }]}>
-            {surah.nameEnglish} · {surah.ayahCount} Ayahs
+          <Text
+            style={[
+              styles.surahNameEnglish,
+              { color: colors.mutedForeground },
+            ]}
+          >
+            {surah.nameEnglish} · {surah.ayahCount} Ayahs ·{" "}
+            {surah.revelationType}
           </Text>
         </View>
 
@@ -79,9 +124,28 @@ export default function SurahReaderScreen() {
       </View>
 
       <FlatList
+        ref={listRef}
         data={ayahs}
         keyExtractor={(a) => String(a.ayahNumber)}
-        renderItem={({ item }: { item: AyahData }) => <AyahCard ayah={item} />}
+        onLayout={onListReady}
+        getItemLayout={getItemLayout}
+        renderItem={({ item, index }: { item: AyahData; index: number }) => {
+          const nextAyah = ayahs[index + 1];
+          const isLastInRuku = nextAyah
+            ? item.ruku !== nextAyah.ruku
+            : false;
+          const extraText = langMap?.get(
+            `${item.surahNumber}:${item.ayahNumber}`
+          );
+          return (
+            <AyahCard
+              ayah={item}
+              extraText={extraText}
+              extraLang={activeLang}
+              isLastInRuku={isLastInRuku}
+            />
+          );
+        }}
         ListHeaderComponent={
           showBismillah ? (
             <View
@@ -95,7 +159,9 @@ export default function SurahReaderScreen() {
                 },
               ]}
             >
-              <Text style={[styles.bismillahText, { color: colors.arabicText }]}>
+              <Text
+                style={[styles.bismillahText, { color: colors.arabicText }]}
+              >
                 {BISMILLAH}
               </Text>
             </View>
@@ -106,9 +172,10 @@ export default function SurahReaderScreen() {
           paddingBottom: insets.bottom + (Platform.OS === "web" ? 34 : 24),
         }}
         showsVerticalScrollIndicator={false}
-        initialNumToRender={10}
+        initialNumToRender={12}
         maxToRenderPerBatch={10}
-        windowSize={5}
+        windowSize={7}
+        onScrollToIndexFailed={() => {}}
       />
     </View>
   );
@@ -145,9 +212,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   surahNameEnglish: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
     marginTop: 2,
+    textAlign: "center",
   },
   numberBadge: {
     width: 36,

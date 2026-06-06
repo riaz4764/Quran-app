@@ -13,6 +13,17 @@ export interface AyahData {
   arabic: string;
   english: string;
   urdu: string;
+  juz: number;
+  ruku: number;
+  page: number;
+}
+
+export interface JuzMeta {
+  number: number;
+  arabicName: string;
+  startSurahNumber: number;
+  startAyahNumber: number;
+  startSurahName: string;
 }
 
 export interface Bookmark {
@@ -26,4 +37,15 @@ export interface QuranSettings {
   translationFontSize: number;
   showEnglish: boolean;
   showUrdu: boolean;
+  activeExtraLang: string | null;
 }
+
+export interface ExtraLanguage {
+  id: string;
+  edition: string;
+  nameEnglish: string;
+  nameNative: string;
+  direction: "ltr" | "rtl";
+}
+
+export type DownloadStatus = "not_downloaded" | "downloading" | "downloaded" | "error";
