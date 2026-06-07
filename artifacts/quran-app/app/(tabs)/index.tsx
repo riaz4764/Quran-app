@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   FlatList,
   Platform,
   Pressable,
@@ -12,10 +13,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { JuzCard } from "@/components/JuzCard";
 import { SurahCard } from "@/components/SurahCard";
 import { useColors } from "@/hooks/useColors";
+import type { JuzMeta, SurahMeta } from "@/types/quran";
 import { getJuzList, getSurahs } from "@/utils/quranData";
-
-const SURAHS = getSurahs();
-const JUZS = getJuzList();
 
 type ViewMode = "surah" | "juz";
 
@@ -24,31 +23,43 @@ export default function SurahListScreen() {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState("");
   const [mode, setMode] = useState<ViewMode>("surah");
+  const [surahs, setSurahs] = useState<SurahMeta[]>([]);
+  const [juzs, setJuzs] = useState<JuzMeta[]>([]);
+  const [ready, setReady] = useState(false);
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setSurahs(getSurahs());
+      setJuzs(getJuzList());
+      setReady(true);
+    }, 0);
+    return () => clearTimeout(id);
+  }, []);
+
   const filteredSurahs = useMemo(() => {
-    if (!query.trim()) return SURAHS;
+    if (!query.trim()) return surahs;
     const q = query.toLowerCase();
-    return SURAHS.filter(
+    return surahs.filter(
       (s) =>
         s.nameEnglish.toLowerCase().includes(q) ||
         s.nameTranslation.toLowerCase().includes(q) ||
         s.nameArabic.includes(q) ||
         String(s.number).includes(q)
     );
-  }, [query]);
+  }, [query, surahs]);
 
   const filteredJuzs = useMemo(() => {
-    if (!query.trim()) return JUZS;
+    if (!query.trim()) return juzs;
     const q = query.toLowerCase();
-    return JUZS.filter(
+    return juzs.filter(
       (j) =>
         j.arabicName.includes(q) ||
         j.startSurahName.toLowerCase().includes(q) ||
         String(j.number).includes(q)
     );
-  }, [query]);
+  }, [query, juzs]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
@@ -156,10 +167,18 @@ export default function SurahListScreen() {
           value={query}
           onChangeText={setQuery}
           returnKeyType="search"
+          editable={ready}
         />
       </View>
 
-      {mode === "surah" ? (
+      {!ready ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color={colors.gold} />
+          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>
+            Loading Quran…
+          </Text>
+        </View>
+      ) : mode === "surah" ? (
         <FlatList
           data={filteredSurahs}
           keyExtractor={(s) => String(s.number)}
@@ -170,6 +189,7 @@ export default function SurahListScreen() {
           }}
           showsVerticalScrollIndicator={false}
           initialNumToRender={20}
+          windowSize={10}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
@@ -252,6 +272,16 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     paddingHorizontal: 14,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  loadingBox: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 14,
+  },
+  loadingText: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
   },

@@ -20,6 +20,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { BookmarkProvider } from "@/context/BookmarkContext";
 import { QuranProvider } from "@/context/QuranContext";
+import { preloadQuranData } from "@/utils/quranDataAsync";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -51,6 +52,7 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded || fontError) {
       SplashScreen.hideAsync();
+      preloadQuranData();
     }
   }, [fontsLoaded, fontError]);
 
