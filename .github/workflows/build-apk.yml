@@ -36,16 +36,18 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # Pure workspace ko build karne ke bajaye hum sirf main quran-app ko target kar rahe hain
-      # Aur saare zaroori fallback env variables bhi de diye hain
+      # Expo build script ko raazi karne ke liye saare required domains env mein de diye hain
       - name: Build Android App (Offline Package)
         env:
           PORT: 3000
           BASE_PATH: /
           NODE_ENV: production
+          REPLIT_INTERNAL_APP_DOMAIN: localhost
+          REPLIT_DEV_DOMAIN: localhost
+          EXPO_PUBLIC_DOMAIN: localhost
         run: |
           if [ -d "artifacts/quran-app" ]; then
-            echo "Targeting main Quran App workspace..."
+            echo "Targeting main Quran App workspace with fake domains..."
             pnpm --filter ./artifacts/quran-app run build || pnpm build
           else
             pnpm build
