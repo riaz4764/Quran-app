@@ -17,6 +17,7 @@
       "supportsTablet": false
     },
     "android": {
+      "package": "com.riaz4764.quranapp",
       "backgroundColor": "#090B12"
     },
     "web": {
