@@ -42,27 +42,19 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
 
-      # Web build assets ready karna
       - name: Build Web Application
+        working-directory: artifacts/quran-app
+        run: pnpm exec expo export --platform web
         env:
           NODE_ENV: production
-          EXPO_PUBLIC_BASE_URL: /Quran-app
-        run: |
-          if [ -d "artifacts/quran-app" ]; then
-            pnpm --filter ./artifacts/quran-app run build || pnpm build
-          else
-            pnpm build
-          fi
 
-      - name: Upload Web Artifact
+      - name: Create 404.html for SPA routing
+        run: cp artifacts/quran-app/dist/index.html artifacts/quran-app/dist/404.html
+
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: |
-            artifacts/quran-app/dist
-            artifacts/quran-app/out
-            dist
-            out
-          if-no-files-found: warn
+          path: artifacts/quran-app/dist
 
       - name: Deploy to GitHub Pages
         id: deployment
