@@ -1,40 +1,8 @@
 import type { AyahData, JuzMeta, SurahMeta } from "@/types/quran";
+import type { QuranRawData, RawSurah } from "./quranLoader.types";
+import { loadQuranRawData } from "./quranLoader";
 
-const arabicRaw = require("@/assets/data/arabic.json") as {
-  quran: { chapter: number; verse: number; text: string }[];
-};
-
-interface RawAyah {
-  number: number;
-  text: string;
-  numberInSurah: number;
-  juz: number;
-  manzil: number;
-  page: number;
-  ruku: number;
-  hizbQuarter: number;
-  sajda: boolean;
-}
-
-interface RawSurah {
-  number: number;
-  name: string;
-  englishName: string;
-  englishNameTranslation: string;
-  revelationType: string;
-  ayahs: RawAyah[];
-}
-
-const englishRaw = require("@/assets/data/english.json") as {
-  data: { surahs: RawSurah[] };
-};
-
-const urduRaw = require("@/assets/data/urdu.json") as {
-  data: {
-    surahs: { number: number; ayahs: { numberInSurah: number; text: string }[] }[];
-  };
-};
-
+let _raw: QuranRawData | null = null;
 let _arabicMap: Map<string, string> | null = null;
 let _surahs: SurahMeta[] | null = null;
 let _englishByKey: Map<string, string> | null = null;
@@ -43,6 +11,8 @@ let _rukoByKey: Map<string, number> | null = null;
 let _juzByKey: Map<string, number> | null = null;
 let _pageByKey: Map<string, number> | null = null;
 let _juzList: JuzMeta[] | null = null;
+
+let _initPromise: Promise<void> | null = null;
 
 const JUZ_ARABIC_NAMES: Record<number, string> = {
   1: "الم",
@@ -77,11 +47,9 @@ const JUZ_ARABIC_NAMES: Record<number, string> = {
   30: "عَمَّ يَتَسَاءَلُونَ",
 };
 
-function initMaps() {
-  if (_arabicMap) return;
-
+function buildMaps(raw: QuranRawData): void {
   _arabicMap = new Map();
-  for (const v of arabicRaw.quran) {
+  for (const v of raw.arabic.quran) {
     _arabicMap.set(`${v.chapter}:${v.verse}`, v.text);
   }
 
@@ -93,7 +61,7 @@ function initMaps() {
 
   const juzFirstSeen = new Map<number, { surahNumber: number; ayahNumber: number }>();
 
-  for (const s of englishRaw.data.surahs) {
+  for (const s of raw.english.data.surahs) {
     for (const a of s.ayahs) {
       const key = `${s.number}:${a.numberInSurah}`;
       _englishByKey.set(key, a.text);
@@ -106,13 +74,13 @@ function initMaps() {
     }
   }
 
-  for (const s of urduRaw.data.surahs) {
+  for (const s of raw.urdu.data.surahs) {
     for (const a of s.ayahs) {
       _urduByKey.set(`${s.number}:${a.numberInSurah}`, a.text);
     }
   }
 
-  _surahs = englishRaw.data.surahs.map((s) => ({
+  _surahs = raw.english.data.surahs.map((s: RawSurah) => ({
     number: s.number,
     nameArabic: s.name,
     nameEnglish: s.englishName,
@@ -135,24 +103,34 @@ function initMaps() {
   });
 }
 
+export function initAsync(): Promise<void> {
+  if (_initPromise) return _initPromise;
+  _initPromise = loadQuranRawData().then((raw) => {
+    _raw = raw;
+    buildMaps(raw);
+  });
+  return _initPromise;
+}
+
+export function isReady(): boolean {
+  return _arabicMap !== null;
+}
+
 export function getSurahs(): SurahMeta[] {
-  initMaps();
-  return _surahs!;
+  return _surahs ?? [];
 }
 
 export function getSurah(surahNumber: number): SurahMeta | undefined {
-  initMaps();
-  return _surahs!.find((s) => s.number === surahNumber);
+  return _surahs?.find((s) => s.number === surahNumber);
 }
 
 export function getJuzList(): JuzMeta[] {
-  initMaps();
-  return _juzList!;
+  return _juzList ?? [];
 }
 
 export function getSurahAyahs(surahNumber: number): AyahData[] {
-  initMaps();
-  const surah = englishRaw.data.surahs.find((s) => s.number === surahNumber);
+  if (!_raw || !_arabicMap) return [];
+  const surah = _raw.english.data.surahs.find((s) => s.number === surahNumber);
   if (!surah) return [];
 
   return surah.ayahs.map((a) => {
@@ -174,13 +152,12 @@ export function searchAyahs(
   query: string,
   extraLangMap?: Map<string, string>
 ): AyahData[] {
-  if (!query.trim()) return [];
-  initMaps();
+  if (!query.trim() || !_raw || !_arabicMap) return [];
 
   const q = query.toLowerCase().trim();
   const results: AyahData[] = [];
 
-  for (const s of englishRaw.data.surahs) {
+  for (const s of _raw.english.data.surahs) {
     for (const a of s.ayahs) {
       const key = `${s.number}:${a.numberInSurah}`;
       const eng = _englishByKey!.get(key) ?? "";
