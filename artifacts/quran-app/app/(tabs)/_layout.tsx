@@ -84,6 +84,18 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="qibla"
+        options={{
+          title: "Qibla",
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="location.north.line" tintColor={color} size={24} />
+            ) : (
+              <Feather name="navigation" size={22} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
