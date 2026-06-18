@@ -36,8 +36,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # Expo build script ko raazi karne ke liye saare required domains env mein de diye hain
-      - name: Build Android App (Offline Package)
+      # Step 1: Expo app ko build karenge aur static assets taiyar karenge
+      - name: Build Android App Assets
         env:
           PORT: 3000
           BASE_PATH: /
@@ -47,31 +47,39 @@ jobs:
           EXPO_PUBLIC_DOMAIN: localhost
         run: |
           if [ -d "artifacts/quran-app" ]; then
-            echo "Targeting main Quran App workspace with fake domains..."
             pnpm --filter ./artifacts/quran-app run build || pnpm build
           else
             pnpm build
           fi
-          npx cap sync || true
-          
-      - name: Build Gradle APK
+
+      # Step 2: Native Android folder generate karenge (Expo Prebuild)
+      - name: Generate Native Android Project
         run: |
-          if [ -d "android" ]; then
-            cd android && ./gradlew assembleDebug
-          elif [ -d "artifacts/quran-app/android" ]; then
-            cd artifacts/quran-app/android && ./gradlew assembleDebug
+          if [ -d "artifacts/quran-app" ]; then
+            cd artifacts/quran-app
+            npx expo prebuild --platform android --no-install || true
           else
-            echo "Android folder missing, building generic web-wrapper APK..."
-            pnpm run build:android || true
+            npx expo prebuild --platform android --no-install || true
           fi
 
+      # Step 3: Gradle ke zariye real native Debug APK build karenge
+      - name: Build Gradle APK
+        run: |
+          if [ -d "artifacts/quran-app/android" ]; then
+            cd artifacts/quran-app/android && ./gradlew assembleDebug
+          elif [ -d "android" ]; then
+            cd android && ./gradlew assembleDebug
+          else
+            echo "Fallback: Checking if root gradle wrapper exists..."
+            ./gradlew assembleDebug || echo "No android platform found to compile."
+          fi
+
+      # Step 4: Final APK file ko artifacts mein upload karenge
       - name: Upload Offline APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Quran-App-Offline-Debug-APK
           path: |
-            android/app/build/outputs/apk/debug/app-debug.apk
             artifacts/quran-app/android/app/build/outputs/apk/debug/app-debug.apk
-            dist/*.apk
-            *.apk
-          if-no-files-found: warn
+            android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
