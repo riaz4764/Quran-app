@@ -36,12 +36,18 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # Yahan humne PORT variable pass kar diya hai taake Vite build crash na ho
+      # Pure workspace ko build karne ke bajaye hum sirf main quran-app ko target kar rahe hain
+      # Aur saare zaroori fallback env variables bhi de diye hain
       - name: Build Android App (Offline Package)
         env:
           PORT: 3000
+          BASE_PATH: /
+          NODE_ENV: production
         run: |
-          if [ -f "pnpm-workspace.yaml" ]; then
+          if [ -d "artifacts/quran-app" ]; then
+            echo "Targeting main Quran App workspace..."
+            pnpm --filter ./artifacts/quran-app run build || pnpm build
+          else
             pnpm build
           fi
           npx cap sync || true
@@ -50,6 +56,8 @@ jobs:
         run: |
           if [ -d "android" ]; then
             cd android && ./gradlew assembleDebug
+          elif [ -d "artifacts/quran-app/android" ]; then
+            cd artifacts/quran-app/android && ./gradlew assembleDebug
           else
             echo "Android folder missing, building generic web-wrapper APK..."
             pnpm run build:android || true
@@ -61,6 +69,7 @@ jobs:
           name: Quran-App-Offline-Debug-APK
           path: |
             android/app/build/outputs/apk/debug/app-debug.apk
+            artifacts/quran-app/android/app/build/outputs/apk/debug/app-debug.apk
             dist/*.apk
             *.apk
           if-no-files-found: warn
