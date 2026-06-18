@@ -14,21 +14,21 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. Pehle pnpm install karenge taake cache system ko pnpm mil sake
+      # 1. Pnpm version ko latest par set kar diya taake catalogs feature support ho sake
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
-          version: 8 # Ya jo bhi version aap use kar rahe hain
+          version: latest
 
-      # 2. Phir Node.js setup aur cache active karenge
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
 
+      # 2. Workspace project hone ki wajah se recursive install chalana behtar hai
       - name: Install Dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
