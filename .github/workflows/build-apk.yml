@@ -14,19 +14,18 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. Pnpm version ko latest par set kar diya taake catalogs feature support ho sake
-      - name: Install pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: latest
-
+      # 1. Node.js version 22 set kiya taake naye packages handle ho sakein
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'pnpm'
+          node-version: 22
 
-      # 2. Workspace project hone ki wajah se recursive install chalana behtar hai
+      # 2. Pnpm version 9 par lock kiya jo apke catalog feature ke liye best hai
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
       - name: Install Dependencies
         run: pnpm install --no-frozen-lockfile
 
