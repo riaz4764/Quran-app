@@ -89,16 +89,38 @@ function buildMaps(raw: QuranRawData): void {
     ayahCount: s.ayahs.length,
   }));
 
+  // Compute last ayah per Juz
+  const juzLastSeen = new Map<number, { surahNumber: number; ayahNumber: number }>();
+  for (const s of raw.english.data.surahs) {
+    for (const a of s.ayahs) {
+      juzLastSeen.set(a.juz, { surahNumber: s.number, ayahNumber: a.numberInSurah });
+    }
+  }
+
+  // Count ayahs per Juz
+  const juzAyahCount = new Map<number, number>();
+  for (const s of raw.english.data.surahs) {
+    for (const a of s.ayahs) {
+      juzAyahCount.set(a.juz, (juzAyahCount.get(a.juz) ?? 0) + 1);
+    }
+  }
+
   _juzList = Array.from({ length: 30 }, (_, i) => {
     const n = i + 1;
     const start = juzFirstSeen.get(n) ?? { surahNumber: 1, ayahNumber: 1 };
+    const end = juzLastSeen.get(n) ?? start;
     const startSurah = _surahs!.find((s) => s.number === start.surahNumber);
+    const endSurah = _surahs!.find((s) => s.number === end.surahNumber);
     return {
       number: n,
       arabicName: JUZ_ARABIC_NAMES[n] ?? `جزء ${n}`,
       startSurahNumber: start.surahNumber,
       startAyahNumber: start.ayahNumber,
       startSurahName: startSurah?.nameEnglish ?? "",
+      endSurahNumber: end.surahNumber,
+      endAyahNumber: end.ayahNumber,
+      endSurahName: endSurah?.nameEnglish ?? "",
+      ayahCount: juzAyahCount.get(n) ?? 0,
     };
   });
 }
@@ -146,6 +168,29 @@ export function getSurahAyahs(surahNumber: number): AyahData[] {
       page: _pageByKey!.get(key) ?? 1,
     };
   });
+}
+
+export function getJuzAyahs(juzNumber: number): AyahData[] {
+  if (!_raw || !_arabicMap) return [];
+  const results: AyahData[] = [];
+  for (const s of _raw.english.data.surahs) {
+    for (const a of s.ayahs) {
+      if (a.juz === juzNumber) {
+        const key = `${s.number}:${a.numberInSurah}`;
+        results.push({
+          surahNumber: s.number,
+          ayahNumber: a.numberInSurah,
+          arabic: _arabicMap!.get(key) ?? "",
+          english: _englishByKey!.get(key) ?? "",
+          urdu: _urduByKey!.get(key) ?? "",
+          juz: a.juz,
+          ruku: _rukoByKey!.get(key) ?? 1,
+          page: _pageByKey!.get(key) ?? 1,
+        });
+      }
+    }
+  }
+  return results;
 }
 
 export function searchAyahs(

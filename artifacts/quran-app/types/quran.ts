@@ -24,6 +24,10 @@ export interface JuzMeta {
   startSurahNumber: number;
   startAyahNumber: number;
   startSurahName: string;
+  endSurahNumber: number;
+  endAyahNumber: number;
+  endSurahName: string;
+  ayahCount: number;
 }
 
 export interface Bookmark {

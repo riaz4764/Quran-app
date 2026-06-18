@@ -30,6 +30,7 @@ function RootLayoutNav() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="surah" options={{ headerShown: false }} />
+      <Stack.Screen name="juz" options={{ headerShown: false }} />
     </Stack>
   );
 }

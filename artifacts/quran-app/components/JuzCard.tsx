@@ -18,6 +18,11 @@ export function JuzCard({ juz }: Props) {
   const colors = useColors();
   const router = useRouter();
 
+  const sameEndSurah = juz.startSurahNumber === juz.endSurahNumber;
+  const rangeText = sameEndSurah
+    ? `${juz.startSurahName} · ${juz.startAyahNumber}–${juz.endAyahNumber}`
+    : `${juz.startSurahName} ${juz.startAyahNumber} – ${juz.endSurahName} ${juz.endAyahNumber}`;
+
   return (
     <Pressable
       style={({ pressed }) => [
@@ -29,17 +34,14 @@ export function JuzCard({ juz }: Props) {
       ]}
       onPress={() =>
         router.push({
-          pathname: "/surah/[id]",
-          params: {
-            id: String(juz.startSurahNumber),
-            startAyah: String(juz.startAyahNumber),
-          },
+          pathname: "/juz/[id]",
+          params: { id: String(juz.number) },
         })
       }
     >
       <View style={[styles.numberBox, { backgroundColor: colors.accent }]}>
         <Text style={[styles.juzLabel, { color: colors.mutedForeground }]}>
-          Juz
+          Para
         </Text>
         <Text style={[styles.numberArabic, { color: colors.gold }]}>
           {toArabicNum(juz.number)}
@@ -57,13 +59,13 @@ export function JuzCard({ juz }: Props) {
           {juz.arabicName}
         </Text>
         <Text
-          style={[styles.surahInfo, { color: colors.englishText }]}
+          style={[styles.rangeText, { color: colors.englishText }]}
           numberOfLines={1}
         >
-          {juz.startSurahName}
+          {rangeText}
         </Text>
-        <Text style={[styles.ayahRef, { color: colors.mutedForeground }]}>
-          Surah {juz.startSurahNumber} · Ayah {juz.startAyahNumber}
+        <Text style={[styles.ayahCount, { color: colors.mutedForeground }]}>
+          {juz.ayahCount} ayahs
         </Text>
       </View>
 
@@ -115,12 +117,12 @@ const styles = StyleSheet.create({
     fontFamily: "Amiri_400Regular",
     textAlign: "right",
   },
-  surahInfo: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
+  rangeText: {
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
-  ayahRef: {
-    fontSize: 12,
+  ayahCount: {
+    fontSize: 11,
     fontFamily: "Inter_400Regular",
   },
 });
