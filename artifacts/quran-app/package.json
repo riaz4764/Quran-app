@@ -57,6 +57,6 @@
   },
   "dependencies": {
     "@expo-google-fonts/amiri": "^0.4.1",
-    "expo-sensors": "^56.0.6"
+    "expo-sensors": "^15.0.8"
   }
 }

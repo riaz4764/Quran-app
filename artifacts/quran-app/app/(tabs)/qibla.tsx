@@ -224,8 +224,35 @@ export default function QiblaScreen() {
                 { backgroundColor: colors.surface, borderColor: colors.border },
               ]}
             >
+              <View style={styles.coordRow}>
+                <View
+                  style={[
+                    styles.sourceBadge,
+                    {
+                      backgroundColor:
+                        qibla.locationSource === "live"
+                          ? "#16a34a22"
+                          : "#92400e22",
+                      borderColor:
+                        qibla.locationSource === "live" ? "#16a34a" : "#d97706",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.sourceBadgeText,
+                      {
+                        color:
+                          qibla.locationSource === "live" ? "#4ade80" : "#fbbf24",
+                      },
+                    ]}
+                  >
+                    {qibla.locationSource === "live" ? "● Live GPS" : "⏱ Cached"}
+                  </Text>
+                </View>
+              </View>
               <Text style={[styles.coordText, { color: colors.mutedForeground }]}>
-                📍 {qibla.lat.toFixed(4)}°N, {qibla.lng.toFixed(4)}°E
+                📍 {qibla.lat.toFixed(4)}°, {qibla.lng.toFixed(4)}°
               </Text>
               <Text style={[styles.meccaText, { color: colors.mutedForeground }]}>
                 🕋 Mecca: 21.4225°N, 39.8262°E
@@ -385,7 +412,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingVertical: 10,
     paddingHorizontal: 14,
-    gap: 4,
+    gap: 6,
+  },
+  coordRow: {
+    flexDirection: "row",
+  },
+  sourceBadge: {
+    borderRadius: 6,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  sourceBadgeText: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
   },
   coordText: {
     fontSize: 12,
