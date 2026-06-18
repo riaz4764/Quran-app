@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch: # Taake aap jab chahein manually bhi run kar sakein
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,14 +14,18 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # 1. Pehle pnpm install karenge taake cache system ko pnpm mil sake
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8 # Ya jo bhi version aap use kar rahe hain
+
+      # 2. Phir Node.js setup aur cache active karenge
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm' # Kyunki aap pnpm-lock.yaml use kar rahe ho
-
-      - name: Install pnpm
-        run: npm install -g pnpm
+          cache: 'pnpm'
 
       - name: Install Dependencies
         run: pnpm install
@@ -35,13 +39,11 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # Agar aap Expo/Capacitor use kar rahe hain, to yeh command unke mutabiq build nikalegi
       - name: Build Android App (Offline Package)
         run: |
           if [ -f "pnpm-workspace.yaml" ]; then
             pnpm build
           fi
-          # Yahan system automatic platform android build run karega
           npx cap sync || true
           
       - name: Build Gradle APK
@@ -50,7 +52,6 @@ jobs:
             cd android && ./gradlew assembleDebug
           else
             echo "Android folder missing, building generic web-wrapper APK..."
-            # Agar standalone build script package.json mein ho to wo execute hogi
             pnpm run build:android || true
           fi
 
