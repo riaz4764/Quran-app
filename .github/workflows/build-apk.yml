@@ -14,13 +14,11 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 1. Node.js version 22 set kiya taake naye packages handle ho sakein
       - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # 2. Pnpm version 9 par lock kiya jo apke catalog feature ke liye best hai
       - name: Install pnpm
         uses: pnpm/action-setup@v3
         with:
@@ -38,7 +36,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      # Yahan humne PORT variable pass kar diya hai taake Vite build crash na ho
       - name: Build Android App (Offline Package)
+        env:
+          PORT: 3000
         run: |
           if [ -f "pnpm-workspace.yaml" ]; then
             pnpm build
